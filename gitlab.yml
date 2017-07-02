@@ -3,5 +3,6 @@
   become_user: root
   become_method: sudo
   roles:
+    - Gitlab-server
     - Zabbix-agent
 
