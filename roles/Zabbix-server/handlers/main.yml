@@ -1,0 +1,18 @@
+---
+ - name: yum makecache
+   shell: yum makecache 
+   
+ - name: check mysql installation
+   shell: yum list installed | grep mysql
+   register: mysql_installed
+
+ - name: restart MySQL
+   service: name=mysql state=restarted
+
+ - name: restart postgresql-9.5
+   service:
+      name: postgresql-9.5
+      state: restarted
+ 
+ - name: restart httpd
+   service: name=httpd state=restarted

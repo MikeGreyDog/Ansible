@@ -1,0 +1,6 @@
+- hosts: Zabbix-server
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - Zabbix-server

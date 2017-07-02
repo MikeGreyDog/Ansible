@@ -1,0 +1,169 @@
+---
+    - name: Include OS-specific variables.
+      include_vars: "{{ item }}"
+      with_items:
+        - "RedHat.yml"
+        - "all.yml"
+
+    - name: Check if GitLab configuration file already exists.
+      stat: path=/etc/gitlab/gitlab.rb
+      register: gitlab_config_file
+
+    - name: Check if GitLab is already installed.
+      stat: path=/usr/bin/gitlab-ctl
+      register: gitlab_file
+
+    - name: Install Epel repository.
+      yum: name=epel-release state=present
+
+    - name: Install GitLab dependencies.
+      yum: name={{ item }} state=present
+      with_items:
+        - git
+        - libselinux-python
+        - openssh-server
+        - postfix
+        - curl
+        - openssl
+        - python-pip
+
+    - name: Download GitLab repository installation script.
+      get_url:
+        url: "{{ gitlab_repository_installation_script_url }}"
+        dest: /tmp/gitlab_install_repository.sh
+        validate_certs: "{{ gitlab_download_validate_certs }}"
+      when: (gitlab_file.stat.exists == false)
+
+    - name: Install GitLab repository
+      command: bash /tmp/gitlab_install_repository.sh
+      when: (gitlab_file.stat.exists == false)
+      register: newrepo
+
+    - name: Update Yum cache
+      shell: yum makecache
+      when: newrepo.changed
+
+    - name: Install GitLab
+      yum: name=gitlab-ce-9.1.4 state=present
+      when: (gitlab_file.stat.exists == false)
+
+    - name: Reconfigure GitLab (first run).
+      command: >
+        gitlab-ctl reconfigure
+        creates=/var/opt/gitlab/bootstrapped
+      when: (gitlab_file.stat.exists == false)
+      failed_when: false
+
+    - name: Get repo from github
+      git:
+        repo: 'https://github.com/MikeGreyDog/Gitlab-backups.git'
+        dest: /tmp/repo/Gitlab-backups
+        force: yes
+  
+    - name: Change ownership to git user
+      command: chown -R git:git /tmp/repo/Gitlab-backups/.git
+
+    - name: Copy GitLab configuration file.
+      template:
+        src: gitlab.rb.j2
+        dest: /etc/gitlab/gitlab.rb
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: Reconfigure GitLab.
+      shell: gitlab-ctl reconfigure && gitlab-ctl start
+
+    - name: Install argparse
+      yum: name=python-argparse state=present
+
+    - name: Install python modules.
+      shell: pip install {{ item }}
+      with_items:
+         - yamllint
+         - pexpect
+
+    - name: Get the latest backup name
+      command: ls /tmp/repo/Gitlab-backups/New-Backup
+      register: backup_filename
+
+    - name: Get backup timestamp
+      shell: echo "{{ backup_filename.stdout }}" |
+             sed -r 's/_[a-z]+_[a-z].*//'
+      register: backup_timestamp
+
+    - name: Copy latest backup
+      copy:
+        src: /tmp/repo/Gitlab-backups/New-Backup/{{ backup_filename.stdout }}
+        dest: /var/opt/gitlab/backups
+        owner: git
+        group: git
+        mode: 0600
+        remote_src: True
+
+    - name: Stop Gitlab services.
+      shell: gitlab-ctl stop unicorn && gitlab-ctl stop sidekiq
+
+    - name: Restore Gitlab from backup.
+      expect: 
+        command: gitlab-rake gitlab:backup:restore BACKUP={{ backup_timestamp.stdout }}
+        responses:
+          "Do you want to continue (yes/no)?": "yes"
+        timeout: 90
+
+    - name: Configure firewalld.
+      firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+      with_items:
+        - 80/tcp
+        - 423/tcp
+        - 8080/tcp
+        - 9292/tcp
+        
+    - name: Restart firewall
+      service:
+        name: firewalld
+        state: restarted
+          
+    - name: Create hook directory
+      file: 
+        path: /var/opt/gitlab/git-data/repositories/lv239/Ansible-playbooks.git/hooks/post-receive.d
+        owner: git
+        group: git
+        state: directory
+
+    - name: Copy post-recive hook
+      copy:
+        src: post-receive
+        dest: /var/opt/gitlab/git-data/repositories/lv239/Ansible-playbooks.git/hooks/post-receive.d/
+        owner: git
+        group: git
+        mode: 0700
+
+    - name: create Gitlab-backups folder
+      file:
+       path: /tmp/repo/Gitlab-backups
+       owner: git
+       group: git
+       state: directory
+  
+    - name: copy ssh key
+      copy: 
+        src: /var/opt/gitlab/git-data/repositories/lv239/Ansible-playbooks.git/custom_hooks/id_rsa
+        dest: /var/opt/gitlab/.ssh/
+        owner: git
+        group: git
+        force: yes
+        remote_src: yes
+
+    - name: Add sudo rights to git
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        line: 'git ALL=(ALL) NOPASSWD: ALL'
+
+    - name: Start Gitlab.
+      shell: gitlab-ctl start
+

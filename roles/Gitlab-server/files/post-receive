@@ -1,0 +1,30 @@
+#!/bin/bash
+
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+while read oldrev newrev ref
+do
+  cd /tmp/repo/Gitlab-backups
+  unset GIT_DIR
+  git remote set-url origin git@github.com:MikeGreyDog/Gitlab-backups.git
+  git pull 
+
+  sudo rm -rf Old-Backup
+  sudo mv Previous-Backup Old-Backup
+  sudo mv New-Backup Previous-Backup
+  mkdir New-Backup
+
+  sudo gitlab-rake gitlab:backup:create
+
+  unset GIT_DIR
+  git add . --all
+  git commit -m "New backup added: $(date '+%d%m%Y_%H:%M:%S')"
+  git push origin master
+
+done 
+ exit 0
+
+
+

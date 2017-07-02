@@ -1,0 +1,93 @@
+---
+  - name: Include vars
+    include_vars: "agent_vars.yml"
+
+  - name: Add repository --CentOS 6
+    yum: 
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{ zabbix_agent_repo_6 }}"
+    when: ansible_distribution_major_version == "6" 
+
+  - name: Add repository --Centos 7
+    yum:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{ zabbix_agent_repo_7 }}"
+    when: ansible_distribution_major_version == "7"    
+    
+  - name: Install Zabbix-agent
+    yum:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "zabbix-agent"
+      - "python-pip"
+
+  - name: Install ZabbixApi
+    command: pip install Zabbix-Api
+
+  - debug: 
+      msg: "System version is {{ ansible_distribution_major_version }}"
+
+  - debug:
+      msg: "Hostname will be {{ group_names[0] }}"
+
+  - debug:
+      msg: "Server address is {{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}"
+
+  - name: Copy configuration file
+    template:
+      src: zabbix_agentd.conf.j2
+      dest: /etc/zabbix/zabbix_agentd.conf
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Create host groups
+    zabbix_group:
+      server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
+      login_user: "{{ zabbix_user }}"
+      login_password: "{{ zabbix_password }}"
+      state: present
+      host_groups:
+        - "{{ group_names[0] }}"
+
+  - name: Add Agent to server
+    zabbix_host:
+      server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
+      login_user: "{{ zabbix_user }}"
+      login_password: "{{ zabbix_password }}"
+      host_name: "{{ group_names[0] }}"
+      host_groups:
+        - "{{ group_names[0] }}"
+      link_templates:
+        - Template OS Linux
+      status: enabled
+      state: present
+      force: yes
+      interfaces:
+       - type: 1
+         main: 1
+         useip: 1
+         ip: "{{ inventory_hostname }}"
+         dns: ""
+         port: 10050
+
+  - name: Disable selinux
+    selinux:
+      state: disabled
+    register: was_enabled  
+
+  - shell: setenforce 0
+    sudo: yes
+    ignore_errors: True
+    when: was_enabled.changed
+  
+  - name: Start zabbix-agent
+    service:
+      name: zabbix-agent
+      state: restarted 
+
