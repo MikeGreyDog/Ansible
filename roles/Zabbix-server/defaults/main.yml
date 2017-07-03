@@ -2,5 +2,4 @@ mysql_zabbix_dbhost: "localhost"
 mysql_zabbix_dbname: "zabbixdb"
 mysql_zabbix_dbuser: "zabbixuser"
 mysql_zabbix_dbuser: "1q2w3e"
-remove_installed="1"
-
+remove_installed: "1"

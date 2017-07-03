@@ -27,7 +27,6 @@
       - postgresql95-contrib
       - python-psycopg2
       - libselinux-python
-      - "{{ repmgr_rpm_6.9 }}"
     register: new_installation
 
   - name: Install repmgr --CentOS 6
@@ -46,12 +45,17 @@
       group: postgres
     with_items:
       - "/var/lib/pgsql/repmgr"
-    notify: restart postgresql-9.5
 
-  - name: Initiate database
-    command: service postgresql-9.5 initdb
-             creates=/var/lib/pgsql/9.5/data/postgresql.conf
+  - name: Initiate database ---  MASTER DB
+    command: /usr/pgsql-9.5/bin/postgresql95-setup initdb
+    args:
+        creates: /var/lib/pgsql/9.5/data/postgresql.conf
     when: new_installation.changed
+
+  - name: Restart postgresql-9.5
+    service:
+      name: postgresql-9.5
+      state: restarted
 
   - name: Insert dat into pg_hba.conf 
     template:
@@ -59,9 +63,12 @@
       dest: /var/lib/pgsql/9.5/data/pg_hba.conf
       owner: postgres
       group: postgres
-    notify: restart postgresql-9.5  
  
-
+  - name: Restart postgresql-9.5
+    service: 
+      name: postgresql-9.5
+      state: restarted 
+ 
   - name: Start PostgreSQL and enable at boot 
     service:
       name: postgresql-9.5
@@ -76,7 +83,11 @@
       password: "{ DB_pass }}"
       role_attr_flags: SUPERUSER # needs for repmgr
       state: present
-    notify: restart postgresql-9.5
+
+  - name: Restart postgresql-9.5
+    service: 
+      name: postgresql-9.5
+      state: restarted
 
   - name: Create DB 
     become_user: postgres
@@ -89,7 +100,11 @@
       lc_ctype: 'en_US.UTF-8'
       template: 'template0'
       state: present
-    notify: restart postgresql-9.5 
+
+  - name: Restart postgresql-9.5
+    service: 
+      name: postgresql-9.5
+      state: restarted
 
   - name: Set connection limit.
     lineinfile:
@@ -152,13 +167,13 @@
       name: "{{ item }}"
       state: present
     with_items:
-      - "php56w"
-      - "php56w-pgsql"
-      - "php56w-gd"
-      - "php56w-bcmath"
-      - "php56w-pdo"
-      - "php56w-xml"
-      - "php56w-mbstring"
+      - "php"
+      - "php-pgsql"
+      - "php-gd"
+      - "php-bcmath"
+      - "php-pdo"
+      - "php-xml"
+      - "php-mbstring"
 
   - name: Copy Zabbix web-console configuration file
     copy:
@@ -167,20 +182,6 @@
 
   - name: Set permission for zabbix/web
     command: chown -R apache:apache /etc/zabbix/web 
-
-  - name: Configure firewalld
-    firewalld:
-      port: "{{ item }}"
-      permanent: true
-      state: enabled
-    with_items:
-      - 80/tcp
-      - 8080/tcp
-      - 10050/tcp
-      - 10051/tcp
-
-  - name: Restart firewalld
-    service: name=firewalld state=restarted
 
   - name: Disable selinux
     selinux:
@@ -211,5 +212,5 @@
       - "zabbix-agent"
 
       
-  handlers:
-    - include: handlers/main.yml
+
+
