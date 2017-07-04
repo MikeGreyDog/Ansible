@@ -111,21 +111,21 @@
           "Do you want to continue (yes/no)?": "yes"
         timeout: 90
 
-    - name: Configure firewalld.
-      firewalld:
-        port: "{{ item }}"
-        permanent: true
-        state: enabled
-      with_items:
-        - 80/tcp
-        - 423/tcp
-        - 8080/tcp
-        - 9292/tcp
+#    - name: Configure firewalld.
+#      firewalld:
+#        port: "{{ item }}"
+#        permanent: true
+#        state: enabled
+#      with_items:
+#        - 80/tcp
+#        - 423/tcp
+#        - 8080/tcp
+#        - 9292/tcp
         
-    - name: Restart firewall
-      service:
-        name: firewalld
-        state: restarted
+#    - name: Restart firewall
+#      service:
+#        name: firewalld
+#        state: restarted
           
     - name: Create hook directory
       file: 
