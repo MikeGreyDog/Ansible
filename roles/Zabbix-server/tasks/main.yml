@@ -180,6 +180,12 @@
       src: zabbix.conf
       dest: /etc/httpd/conf.d/
 
+  - name: Copy httpd configurations
+    copy:
+      src: httpd.conf
+      dest: /etc/httpd/conf/
+      force: yes
+
   - name: Set permission for zabbix/web
     command: chown -R apache:apache /etc/zabbix/web 
 
