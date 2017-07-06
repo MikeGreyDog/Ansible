@@ -45,7 +45,7 @@
       owner: root
       group: root
       mode: 0644
-
+  
   - name: Create host groups
     zabbix_group:
       server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
@@ -53,16 +53,16 @@
       login_password: "{{ zabbix_password }}"
       state: present
       host_groups:
-        - "{{ group_names[0] }}"
+        - "OMS_Services"
 
   - name: Add Agent to server
     zabbix_host:
       server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
       login_user: "{{ zabbix_user }}"
       login_password: "{{ zabbix_password }}"
-      host_name: "{{ group_names[0] }}"
+      host_name: "OMS_{{ group_names[0] }}"
       host_groups:
-        - "{{ group_names[0] }}"
+        - "OMS_Services"
       link_templates:
         - Template OS Linux
       status: enabled
@@ -75,6 +75,16 @@
          ip: "{{ inventory_hostname }}"
          dns: ""
          port: 10050
+
+  - name: Create Trigger
+    zabbix_trigger:
+      server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
+      login_user: "{{ zabbix_user }}"
+      login_password: "{{ zabbix_password }}"
+      state: present
+      descr:
+        - "Server {HOST.NAME} is unreacheble more than 1 minute"
+      exp: "{{ trigger_exp }}"
 
   - name: Disable selinux
     selinux:
