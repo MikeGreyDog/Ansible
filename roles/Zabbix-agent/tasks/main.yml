@@ -104,7 +104,7 @@
     register: new_script
 
   - debug:
-      msg: "{{ new_script }}"
+      msg: "{{ new_script['result'] }}"
 
   - name: Disable selinux
     selinux:
@@ -119,5 +119,4 @@
   - name: Start zabbix-agent
     service:
       name: zabbix-agent
-      state: restarted 
-
+      state: restarted
