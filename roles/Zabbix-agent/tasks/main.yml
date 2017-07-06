@@ -85,6 +85,7 @@
       descr:
         - "Server {HOST.NAME} is unreacheble more than 1 minute"
       exp: "{{ trigger_exp }}"
+      priority: "4"
 
   - name: Disable selinux
     selinux:
