@@ -103,8 +103,20 @@
       host_access: "3"
     register: new_script
 
-  - debug:
-      msg: "{{ new_script['result'] }}"
+  - name: Create/Update Zabbix screen
+    zabbix_screen:
+      server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
+      login_user: "{{ zabbix_user }}"
+      login_password: "{{ zabbix_password }}"
+      screens:
+        - screen_name: OMS
+          host_group: OMS_Services
+          state: present
+          graph_names:
+            - "CPU load"
+            - "Memory usage"
+          graph_width: 200
+          graph_height: 100
 
   - name: Disable selinux
     selinux:
