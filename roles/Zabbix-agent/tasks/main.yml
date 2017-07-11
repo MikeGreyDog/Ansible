@@ -75,6 +75,10 @@
          ip: "{{ inventory_hostname }}"
          dns: ""
          port: 10050
+    register: new_host
+
+  - debug:
+      msg: "{{ new_host }}"
 
   - name: Create Trigger
     zabbix_trigger:
@@ -83,13 +87,10 @@
       login_password: "{{ zabbix_password }}"
       state: present
       descr:
-        - "Server {HOST.NAME} is unreacheble more than 1 minute"
+        - "Server OMS_{{ group_names[0] }} {{ trigger_name }}"
       exp: "{{ trigger_exp }}"
       priority: "4"
     register: new_trigger
-
-  - debug:
-      msg: "{{ new_trigger }}"
 
   - name: Create script
     zabbix_script:
@@ -103,6 +104,19 @@
       host_access: "3"
     register: new_script
 
+  - name: Create action
+    zabbix_action:
+      server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"
+      login_user: "{{ zabbix_user }}"
+      login_password: "{{ zabbix_password }}"
+      state: present
+      name:
+        - "Recreate {{ group_names[0] }}"
+      host_id: "OMS_{{ group_names[0] }}"
+      trigger_id: "{{ new_trigger.result[0].triggerids[0] }}"
+      script_id: "{{ new_script.result[0].scriptids[0] }}" 
+    when: new_trigger.changed
+ 
   - name: Create/Update Zabbix screen
     zabbix_screen:
       server_url: "http://{{ hostvars[groups['Zabbix-server'][0]]['inventory_hostname'] }}/zabbix"

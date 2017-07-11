@@ -3,3 +3,4 @@ zabbix_agent_repo_7: "http://repo.zabbix.com/zabbix/3.0/rhel/7/x86_64/zabbix-rel
 zabbix_user: "Admin"
 zabbix_password: "zabbix"
 trigger_exp: "{OMS_{{ group_names[0] }}:agent.ping.nodata(1m)}=1"
+trigger_name: "unreacheble more than 1 minute"
